@@ -1,0 +1,131 @@
+---
+title: "Homework 4"
+author: Maya Bunyan
+output: github_document
+---
+
+This my solution to Homework 4!
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(p8105.datasets)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+
+# Problem 1
+
+Load instacart dataset.
+
+```{r}
+data(instacart)
+```
+
+The dataset comes from the Instacart online grocery service. It includes `r nrow(instacart)` observations for `r ncol(instacart)` variables. These variables include the order, user, and product ID. There is also information about the order products were added to the cart, if the products were ordered by the user before, as well as when the order was placed. Information regarding the product, including the name, what aisle it is on, and what department it is in. Each observation in the dataset includes this information for one order for a given user.
+
+How many aisles and which aisles are the most items ordered from?
+
+```{r}
+instacart %>%
+count(aisle) %>%
+arrange(desc(n))
+```
+
+Make a plot!
+
+```{r}
+instacart %>%
+count(aisle) %>%
+filter(n > 10000) %>%
+mutate(
+aisle = factor(aisle),
+aisle = fct_reorder(aisle, n)
+) %>%
+ggplot(aes(x = aisle, y = n)) +
+geom_point() +
+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+
+Table of three most popular items in given aisles.
+
+```{r}
+instacart %>%
+filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>%
+group_by(aisle) %>%
+count(product_name) %>%
+mutate(rank = min_rank(desc(n))) %>%
+filter(rank < 4) %>%
+arrange(aisle, rank) %>%
+knitr::kable()
+```
+
+
+Table mean time Apples and Ice Cream were ordered.
+
+```{r}
+instacart %>%
+filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+group_by(product_name, order_dow) %>%
+summarize(mean_hour = mean(order_hour_of_day)) %>%
+pivot_wider(
+names_from = order_dow,
+values_from = mean_hour
+)
+```
+
+
+## Problem 2
+
+Load and tidy accel data.
+
+```{r}
+accel_tidy_data =
+  read_csv(
+    "./accel_data.csv") %>%
+  janitor::clean_names() %>%
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "minute",
+    names_prefix = "activity_",
+    values_to = "activity_count")
+
+```
+
+This dataset includes `r nrow(accel_tidy_data)` observations and `ncol(accel_tidy_data)` variables. The variables include information on what week and day the data is from, the day id, the minute of the day the activity was taking place, as well as the count of the activity taking place in that minute.
+
+Table total activity for day.
+
+```{r}
+accel_tidy_data %>%
+  group_by(day) %>%
+  summarize(total_activity = sum(activity_count))%>%
+  arrange(desc(total_activity))
+
+```
+
+
+From the output, I do not notice any trends in the total activity counts.
+
+```{r}
+accel_tidy_data %>%
+  ggplot(aes(x = minute, y = activity_count )) +
+geom_point(aes(color = day)) 
+
+```
+
