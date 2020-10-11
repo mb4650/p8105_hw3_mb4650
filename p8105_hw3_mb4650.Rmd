@@ -9,6 +9,7 @@ This my solution to Homework 4!
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(p8105.datasets)
+library(patchwork)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -103,7 +104,12 @@ accel_tidy_data =
     activity_1:activity_1440,
     names_to = "minute",
     names_prefix = "activity_",
-    values_to = "activity_count")
+    values_to = "activity_count")%>%
+  mutate(
+    day = as.factor(day),
+    minute = as.numeric(minute),
+    week_day_end = ifelse(day == "Saturday" | day == "Sunday", "Weekdend", "Weekday")
+  )
 
 ```
 
@@ -113,19 +119,96 @@ Table total activity for day.
 
 ```{r}
 accel_tidy_data %>%
-  group_by(day) %>%
-  summarize(total_activity = sum(activity_count))%>%
-  arrange(desc(total_activity))
+    mutate(
+      day = factor(day, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+    ) %>%
+   group_by(week, day) %>%
+  summarize(total_activity = sum(activity_count))
 
 ```
 
 
-From the output, I do not notice any trends in the total activity counts.
+From the output table, I do not notice any trends in the total activity counts.
+
+Create plot activity over 24 hours.
 
 ```{r}
 accel_tidy_data %>%
-  ggplot(aes(x = minute, y = activity_count )) +
-geom_point(aes(color = day)) 
+  ggplot(aes(x = minute, y = activity_count, color = day, group_by(day_id))) +
+  geom_line()
+```
 
+From the graph we are better able to see trends. We can see that there are spikes in activity at certain parts of the day, specifically around minute 500-800 and 1200-1400. 
+
+
+## Problem 3
+
+Load the data.
+
+```{r}
+data("ny_noaa")
+```
+
+
+Clean the dataset.
+
+```{r}
+ny_noaa_tidy = 
+  ny_noaa %>%
+    separate(
+    col = date, 
+    into = c("year", "month", "day"),
+    convert = TRUE) %>%
+  mutate(
+    tmax = as.numeric(tmax),
+    tmax = tmax/10,
+    tmin = as.numeric(tmin),
+    tmin = tmin/10
+  )
+
+count = 
+  ny_noaa_tidy %>% 
+  count(snow) %>%
+  arrange(desc(n))%>%
+  mutate(rank = min_rank(desc(n))) %>%
+  filter(rank < 4)
+
+
+```
+
+For snowfall, the most common values are 0 and NA. This makes sense since there is no snowfall for most of the year in NY. 
+
+Create two-panel plot.
+
+```{r}
+ny_noaa_tidy %>%
+  select(id, month, year, tmax) %>%
+  filter(month == 7 | month == 1) %>%
+  group_by(id, month, year)%>%
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE)) %>%
+  ggplot(aes(x = year, y = mean_tmax)) + 
+  geom_point(alpha = 0.5) +
+  facet_grid(~month) +
+  theme(legend.position = "bottom")
+
+```
+
+The mean max temps for January appears to be lower (between -20 and 10 C) than that of the mean max temps for July (between 20 and 40 C). We see an outlier around 1982 in January and another around 2005. There appears to be an outlier around 1988 in July. 
+
+```{r}
+tmax_tmin = 
+  ny_noaa_tidy %>% 
+  ggplot(aes(x = tmax, y = tmin)) + 
+  geom_smooth(se = FALSE) +
+  theme(legend.position = "bottom")
+
+snow_dens = 
+  ny_noaa_tidy %>% 
+  filter(0 < snow & snow < 100) %>% 
+  ggplot(aes(x = year, y = snow)) + 
+  geom_violin(aes(fill = year)) + 
+  theme(legend.position = "bottom")
+
+tmax_tmin + snow_dens
 ```
 
